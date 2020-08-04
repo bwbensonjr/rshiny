@@ -9,9 +9,11 @@ state_covid_cases <- fromJSON("https://covidtracking.com/api/states/daily") %>%
     select(-hash, -dateChecked, -fips, -dataQualityGrade, -lastUpdateEt) %>%
     select(-dateModified, -checkTimeEt, -grade) %>%
     pivot_longer(c(-date, -state), names_to="Category", values_to="Count")
+
 us_totals <- state_covid_cases %>%
     group_by(date, Category) %>%
-    summarize(state = "US", Count = sum(Count, na.rm=TRUE))
+    summarize(state = "US", Count = sum(Count, na.rm=TRUE), .groups="drop")
+
 covid_cases <- state_covid_cases %>% bind_rows(us_totals)
 us_states <- sort(unique(covid_cases$state))
 categories <- unique(covid_cases$Category)
