@@ -3,15 +3,16 @@ library(tidyverse)
 library(jsonlite)
 library(lubridate)
 
-covid_cases <- fromJSON("https://covidtracking.com/api/states/daily") %>%
+state_covid_cases <- fromJSON("https://covidtracking.com/api/states/daily") %>%
     as_tibble() %>%
     mutate(date = ymd(date)) %>%
-    select(-hash, -dateChecked, -fips) %>%
+    select(-hash, -dateChecked, -fips, -dataQualityGrade, -lastUpdateEt) %>%
+    select(-dateModified, -checkTimeEt, -grade) %>%
     pivot_longer(c(-date, -state), names_to="Category", values_to="Count")
-us_totals <- covid_cases %>%
+us_totals <- state_covid_cases %>%
     group_by(date, Category) %>%
     summarize(state = "US", Count = sum(Count, na.rm=TRUE))
-covid_cases <- covid_cases %>% bind_rows(us_totals)
+covid_cases <- state_covid_cases %>% bind_rows(us_totals)
 us_states <- sort(unique(covid_cases$state))
 categories <- unique(covid_cases$Category)
 
@@ -20,10 +21,10 @@ ui <- fluidPage(
     a("Data from covidtracking.com", href="https://covidtracking.com/api/states/daily"),
     sidebarLayout(
         sidebarPanel(
-            selectizeInput("category", "Category", categories, "positive"),
+            selectizeInput("category", "Category", categories, "deathIncrease"),
             selectizeInput("state", "State",
                            us_states,
-                           c("MA", "NY", "WA", "NJ", "LA", "CA"),
+                           c("US"),
                            multiple=TRUE),
             width=3
             ),
@@ -60,6 +61,7 @@ server <- function(input, output) {
             filter(state %in% input$state) %>%
             filter(Category == input$category) %>%
             pivot_wider(names_from="state", values_from="Count") %>%
+            arrange(desc(date)) %>%
             mutate(date = as.character(date))
     })
 }
